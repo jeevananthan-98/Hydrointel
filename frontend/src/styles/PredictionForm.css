@@ -1,0 +1,94 @@
+/*
+ * Styles specific to the PredictionForm component.
+ * This focuses on form elements and their interactive states.
+ */
+
+.prediction-form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.prediction-form-container h2 {
+  font-size: 1.875rem; /* text-3xl */
+  font-weight: 700; /* font-bold */
+  margin-bottom: 1rem;
+  color: #6EE7B7; /* green-300 */
+}
+
+.prediction-form-container p {
+  color: #9CA3AF; /* gray-400 */
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 500; /* font-medium */
+  color: #9CA3AF; /* gray-400 */
+  margin-bottom: 0.25rem;
+}
+
+.form-group input {
+  width: 100%;
+  background-color: rgba(31, 41, 55, 0.5);
+  color: #E5E7EB;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid transparent;
+  transition: border-color 0.3s, background-color 0.3s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3B82F6; /* blue-500 */
+  background-color: rgba(31, 41, 55, 0.8);
+}
+
+.btn-predict {
+  background: #10B981; /* green-600 */
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  transition: background-color 0.3s, transform 0.3s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-predict:hover {
+  background-color: #059669; /* green-700 */
+  transform: scale(1.02);
+}
+
+.btn-predict:disabled {
+  background-color: #374151; /* gray-700 */
+  cursor: not-allowed;
+  transform: scale(1);
+}
+
+.prediction-result {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(59, 130, 246, 0.2);
+  border-radius: 0.75rem;
+  text-align: center;
+}
+
+.prediction-result p {
+  color: #D1E9FF; /* light blue */
+  font-size: 2.25rem; /* text-4xl */
+  font-weight: 800; /* font-extrabold */
+  margin-top: 0.5rem;
+}
+
+.error-message {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: 0.75rem;
+  color: #F8B4B4; /* light red */
+  text-align: center;
+}

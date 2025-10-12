@@ -2,19 +2,816 @@
 <html lang="en">
 
 <head>
-  <meta charset="utf-8" />
-  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="description" content="A powerful and dynamic groundwater management application with ML-driven insights." />
-  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-  <title>Groundwater Intelligence</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-key="appTitle">HydroIntel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg-color: #0D1117;
+            --text-color: #E5E7EB;
+            --card-bg: rgba(17, 24, 39, 0.8);
+            --input-bg: rgba(31, 41, 55, 0.5);
+            --plot-bg: #1F2937;
+            --border-color: rgba(0, 0, 0, 0.5);
+            --shadow-color: rgba(0, 0, 0, 0.6);
+            --leaflet-bg: rgba(17, 24, 39, 0.8);
+            --leaflet-text: #E5E7EB;
+            --legend-bg: rgba(17, 24, 39, 0.8);
+            --legend-shadow: rgba(0, 0, 0, 0.2);
+        }
+
+        .light-mode {
+            --bg-color: #F3F4F6;
+            --text-color: #1F2937;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --input-bg: rgba(229, 231, 235, 0.5);
+            --plot-bg: #E5E7EB;
+            --border-color: rgba(255, 255, 255, 0.5);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --leaflet-bg: rgba(255, 255, 255, 0.8);
+            --leaflet-text: #1F2937;
+            --legend-bg: rgba(255, 255, 255, 0.9);
+            --legend-shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.5s ease;
+        }
+
+        .bg-gradient-flow {
+            background: linear-gradient(135deg, #0f172a, #001f3f, #00264d, #0f172a);
+            background-size: 400% 400%;
+            animation: gradient-flow 15s ease infinite;
+        }
+
+        @keyframes gradient-flow {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 10px 30px var(--border-color);
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px var(--shadow-color);
+        }
+
+        .input-field {
+            width: 100%;
+            background: var(--input-bg);
+            border: 2px solid transparent;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #3B82F6;
+            background: var(--input-bg);
+        }
+
+        .btn-primary {
+            background: #10B981;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        #prediction-result {
+            opacity: 0;
+            animation: scaleIn 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .header-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            .header-controls {
+                top: 2rem;
+                right: 2rem;
+            }
+        }
+
+        .x-axis-label {
+            transform: rotate(-45deg);
+            text-anchor: end;
+            font-size: 10px;
+        }
+
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 1rem;
+            box-shadow: 0 5px 15px var(--shadow-color);
+        }
+
+        .legend {
+            background: var(--legend-bg);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px var(--legend-shadow);
+            font-size: 14px;
+            color: var(--leaflet-text);
+        }
+
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+
+        .leaflet-container .leaflet-control-attribution {
+            background: var(--leaflet-bg) !important;
+            color: var(--leaflet-text) !important;
+        }
+
+        .theme-toggle-btn {
+            background: var(--card-bg);
+            color: var(--text-color);
+            padding: 0.5rem;
+            border-radius: 50%;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logged-in-widget {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            background: var(--card-bg);
+            color: var(--text-color);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 10px var(--shadow-color);
+        }
+
+        .profile-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            background-color: #3B82F6;
+            border-radius: 50%;
+        }
+    </style>
 </head>
 
-<body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
-  <div id="root"></div>
-</body>
+<body class="bg-gradient-flow min-h-screen flex flex-col items-center justify-center p-6 space-y-8">
 
+    <!-- Header Controls -->
+    <div class="header-controls">
+        <button id="theme-toggle" class="theme-toggle-btn">
+            <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+        </button>
+        <select id="language-select" class="input-field cursor-pointer px-4 py-2 text-sm md:text-base">
+            <option value="en">English</option>
+            <option value="ml">മലയാളം</option>
+        </select>
+    </div>
+
+    <!-- Login Page -->
+    <div id="login-container" class="w-full max-w-sm space-y-8 p-8 card">
+        <header class="text-center">
+            <h1 class="text-4xl font-extrabold" data-key="appTitle">HydroIntel</h1>
+            <p class="text-gray-400 mt-2" data-key="loginSubtitle">Sign in to access the command center</p>
+        </header>
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label for="login-email" class="block text-sm font-medium text-gray-400 mb-2">Email</label>
+                <input type="email" id="login-email" class="input-field" placeholder="Enter your email" required>
+            </div>
+            <div>
+                <label for="login-password" class="block text-sm font-medium text-gray-400 mb-2">Password</label>
+                <input type="password" id="login-password" class="input-field" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn-primary w-full" data-key="loginButton">Sign In</button>
+        </form>
+        <p id="error-message" class="text-red-400 text-center"></p>
+        <p class="text-gray-400 text-center" data-key="noAccount">
+            Don't have an account? <a href="#" id="create-account-link" class="text-blue-400 hover:underline">Create one</a>
+        </p>
+    </div>
+
+    <!-- Main Application Dashboard -->
+    <div id="app-container" class="w-full max-w-4xl space-y-8">
+
+        <!-- Logged-in Widget -->
+        <div id="logged-in-widget" class="logged-in-widget">
+            <div class="profile-icon"></div>
+            <span id="user-display">Logged in as sparrow@gmail.com</span>
+            <button id="logout-button" class="btn-primary ml-2 px-4 py-2 text-sm" data-key="logoutButton">Sign Out</button>
+        </div>
+
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-green-500" data-key="appTitle">
+                HydroIntel
+            </h1>
+            <p class="text-gray-400 mt-2 text-xl" data-key="appSubtitle">
+                Harnessing data for a sustainable future.
+            </p>
+        </header>
+
+        <!-- Main content area organized in a clean grid -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- Card for Historical Data and Visualization -->
+            <div class="card md:col-span-1 flex flex-col items-center">
+                <h2 class="text-3xl font-bold mb-4" data-key="historicalTrendsTitle">Historical Trends</h2>
+                <p class="text-gray-400 text-center mb-4 text-sm" data-key="historicalTrendsDescription">
+                    Visualize groundwater level fluctuations over time for different cities.
+                </p>
+                <div id="city-select-container" class="w-full mb-4">
+                    <label for="city-select" class="block text-sm font-medium text-gray-400 mb-2" data-key="selectCity">Select a City</label>
+                    <select id="city-select" class="input-field cursor-pointer">
+                        <option value="bangalore" data-key="bangalore">Bangalore</option>
+                        <option value="chennai" data-key="chennai">Chennai</option>
+                        <option value="delhi" data-key="delhi">Delhi</option>
+                        <option value="kolkata" data-key="kolkata">Kolkata</option>
+                        <option value="mumbai" data-key="mumbai">Mumbai</option>
+                    </select>
+                </div>
+                <!-- Chart Container where D3.js will render the plot -->
+                <div id="chart-container" class="w-full h-80 bg-gray-900 rounded-xl p-4 flex items-center justify-center text-gray-500 text-sm">
+                    <p data-key="chartPlaceholder">Chart will be rendered here.</p>
+                </div>
+            </div>
+
+            <!-- Card for ML Prediction and Model Information -->
+            <div class="card md:col-span-1 flex flex-col items-center">
+                <h2 class="text-3xl font-bold mb-4" data-key="predictionTitle">Real-Time Prediction</h2>
+                <p class="text-gray-400 mb-4" data-key="predictionByCityDescription">Select a city to get a real-time prediction.</p>
+                <form id="prediction-form" class="w-full space-y-4">
+                    <select id="prediction-city-select" class="input-field cursor-pointer">
+                        <option value="bangalore" data-key="bangalore">Bangalore</option>
+                        <option value="chennai" data-key="chennai">Chennai</option>
+                        <option value="delhi" data-key="delhi">Delhi</option>
+                        <option value="kolkata" data-key="kolkata">Kolkata</option>
+                        <option value="mumbai" data-key="mumbai">Mumbai</option>
+                    </select>
+                    <button type="submit" class="btn-primary w-full transition-all duration-300 transform scale-100 active:scale-95" data-key="getPrediction">Get Prediction</button>
+                </form>
+
+                <!-- Dynamic display for the prediction result -->
+                <div id="prediction-result" class="mt-8 text-center hidden">
+                    <h3 class="text-lg font-semibold text-gray-400" data-key="predictedWaterLevel">Predicted Water Level</h3>
+                    <p class="text-5xl font-extrabold text-blue-400 mt-2"><span id="predicted-value"></span> m</p>
+                </div>
+
+                <!-- Card for the Model Performance Plot -->
+                <div class="w-full">
+                    <h3 class="text-xl font-bold text-gray-300 mt-8" data-key="modelPerformanceTitle">Model Performance</h3>
+                    <p class="text-sm text-gray-500 mt-2" data-key="modelPerformanceDescription">Simulated to show the power of the XGBoost model.</p>
+                    <div id="model-plot" class="w-full mt-4">
+                        <img src="http://127.0.0.1:5000/model_performance" alt="Model Performance Plot" class="w-full rounded-xl shadow-lg border-2 border-gray-700">
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Card for the Command Center Heatmap -->
+        <div class="w-full">
+            <div class="card">
+                <h2 class="text-3xl font-bold mb-4" data-key="heatmapTitle">Groundwater Stress Heatmap</h2>
+                <p class="text-gray-400 text-center mb-4 text-sm" data-key="heatmapDescription">
+                    A high-level command center with real-time stress data for policymakers.
+                </p>
+                <div id="map" class="w-full h-[400px]"></div>
+                <div class="report-section mt-4">
+                    <h2 class="text-2xl font-bold mb-2" data-key="policyRecommendationsTitle">Policy Recommendations</h2>
+                    <p id="recommendation-text" class="text-gray-400" data-key="initialRecommendation">
+                        Click on a city to get policy recommendations.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for all application logic, translations, and animations -->
+    <script type="module">
+        // Simulating Firebase auth with local storage
+        const DUMMY_EMAIL = "sparrowX@gmail.com";
+        const DUMMY_PASSWORD = "25068";
+        const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+
+        // UI elements
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const logoutButton = document.getElementById('logout-button');
+        const errorMessage = document.getElementById('error-message');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const moonIcon = document.getElementById('moon-icon');
+        const sunIcon = document.getElementById('sun-icon');
+        const languageSelect = document.getElementById('language-select');
+        const citySelect = document.getElementById('city-select');
+        const predictionCitySelect = document.getElementById('prediction-city-select');
+        const predictionForm = document.getElementById('prediction-form');
+        const resultDiv = document.getElementById('prediction-result');
+        const predictedValueSpan = document.getElementById('predicted-value');
+        const chartContainer = document.getElementById('chart-container');
+        const recommendationText = document.getElementById('recommendation-text');
+        const loggedInWidget = document.getElementById('logged-in-widget');
+
+
+        // Functions for dynamic content
+        const historicalData = {
+            'bangalore': [{ Date: '2023-01-01', Water_Level_m: 28.7 }, { Date: '2023-02-01', Water_Level_m: 29.1 }, { Date: '2023-03-01', Water_Level_m: 29.5 }, { Date: '2023-04-01', Water_Level_m: 29.3 }, { Date: '2023-05-01', Water_Level_m: 28.9 }],
+            'chennai': [{ Date: '2023-01-01', Water_Level_m: 35.5 }, { Date: '2023-02-01', Water_Level_m: 34.9 }, { Date: '2023-03-01', Water_Level_m: 34.2 }, { Date: '2023-04-01', Water_Level_m: 33.8 }, { Date: '2023-05-01', Water_Level_m: 33.5 }],
+            'delhi': [{ Date: '2023-01-01', Water_Level_m: 25.1 }, { Date: '2023-02-01', Water_Level_m: 24.5 }, { Date: '2023-03-01', Water_Level_m: 23.8 }, { Date: '2023-04-01', Water_Level_m: 23.2 }, { Date: '2023-05-01', Water_Level_m: 22.9 }],
+            'kolkata': [{ Date: '2023-01-01', Water_Level_m: 8.5 }, { Date: '2023-02-01', Water_Level_m: 9.2 }, { Date: '2023-03-01', Water_Level_m: 9.8 }, { Date: '2023-04-01', Water_Level_m: 10.1 }, { Date: '2023-05-01', Water_Level_m: 9.5 }],
+            'mumbai': [{ Date: '2023-01-01', Water_Level_m: 10.2 }, { Date: '2023-02-01', Water_Level_m: 11.5 }, { Date: '2023-03-01', Water_Level_m: 12.1 }, { Date: '2023-04-01', Water_Level_m: 11.8 }, { Date: '2023-05-01', Water_Level_m: 10.9 }],
+        };
+
+        const translations = {
+            en: {
+                appTitle: 'HydroIntel',
+                appSubtitle: 'Harnessing data for a sustainable future.',
+                loginSubtitle: 'Sign in to access the command center',
+                loginButton: 'Sign In',
+                noAccount: "Don't have an account? Create one",
+                logoutButton: 'Sign Out',
+                selectLanguage: 'Select Language',
+                historicalTrendsTitle: 'Historical Trends',
+                historicalTrendsDescription: 'Visualize groundwater level fluctuations over time for different cities.',
+                selectCity: 'Select a City',
+                chartPlaceholder: 'Chart will be rendered here.',
+                predictionTitle: 'Real-Time Prediction',
+                predictionByCityDescription: 'Select a city to get a real-time prediction.',
+                getPrediction: 'Get Prediction',
+                predictedWaterLevel: 'Predicted Water Level',
+                modelPerformanceTitle: 'Model Performance',
+                modelPerformanceDescription: 'Simulated to show the power of the XGBoost model.',
+                getPredictionFor: 'Get Prediction for',
+                bangalore: 'Bangalore',
+                chennai: 'Chennai',
+                delhi: 'Delhi',
+                kolkata: 'Kolkata',
+                mumbai: 'Mumbai',
+                heatmapTitle: 'Groundwater Stress Heatmap',
+                heatmapDescription: 'A high-level command center with real-time stress data for policymakers.',
+                policyRecommendationsTitle: 'Policy Recommendations',
+                initialRecommendation: 'Click on a city to get policy recommendations.',
+                Delhi: 'Immediate action required. Implement water conservation policies and explore alternative water sources for the capital.',
+                Mumbai: 'Groundwater levels are stable. Focus on long-term sustainability and monitoring to prevent future stress.',
+                Chennai: 'High stress detected. Initiate city-wide water recycling programs and rainwater harvesting mandates.',
+                Kolkata: 'Monitor closely. Current stress is moderate, but urban growth could lead to increased demand.',
+                Bangalore: 'Critical stress. Implement strict regulations on borewell usage and promote community-based water management.',
+                themeToggle: 'Toggle Theme'
+            },
+            ml: {
+                appTitle: 'ഹൈഡ്രോഇന്റൽ',
+                appSubtitle: 'സുസ്ഥിര ഭാവിക്കായി ഡാറ്റ പ്രയോജനപ്പെടുത്തുന്നു.',
+                loginSubtitle: 'കമാൻഡ് സെന്റർ ആക്‌സസ് ചെയ്യാൻ സൈൻ ഇൻ ചെയ്യുക',
+                loginButton: 'സൈൻ ഇൻ ചെയ്യുക',
+                noAccount: 'അക്കൗണ്ട് ഇല്ലേ? ഒരെണ്ണം ഉണ്ടാക്കുക',
+                logoutButton: 'സൈൻ ഔട്ട് ചെയ്യുക',
+                selectLanguage: 'ഭാഷ തിരഞ്ഞെടുക്കുക',
+                historicalTrendsTitle: 'ചരിത്രപരമായ പ്രവണതകൾ',
+                historicalTrendsDescription: 'വിവിധ നഗരങ്ങളിലെ ഭൂഗർഭജലനിരപ്പ് ഏറ്റക്കുറച്ചിലുകൾ ദൃശ്യവൽക്കരിക്കുക.',
+                selectCity: 'ഒരു നഗരം തിരഞ്ഞെടുക്കുക',
+                chartPlaceholder: 'ചാർട്ട് ഇവിടെ റെൻഡർ ചെയ്യും.',
+                predictionTitle: 'തത്സമയ പ്രവചനം',
+                predictionByCityDescription: 'ഒരു നഗരം തിരഞ്ഞെടുത്ത് തത്സമയ പ്രവചനം നേടുക.',
+                getPrediction: 'പ്രവചനം നേടുക',
+                predictedWaterLevel: 'പ്രവചിച്ച ജലനിരപ്പ്',
+                modelPerformanceTitle: 'മോഡൽ പ്രകടനം',
+                modelPerformanceDescription: 'XGBoost മോഡലിന്റെ ശക്തി കാണിക്കാൻ അനുകരിക്കുന്നു.',
+                getPredictionFor: 'പ്രവചനം നേടുക',
+                bangalore: 'ബെംഗളൂരു',
+                chennai: 'ചെന്നൈ',
+                delhi: 'ഡൽഹി',
+                kolkata: 'കൊൽക്കത്ത',
+                mumbai: 'മുംബൈ',
+                heatmapTitle: 'ഭൂഗർഭജല സമ്മർദ്ദ ഹീറ്റ്മാപ്പ്',
+                heatmapDescription: 'നയരൂപകർത്താക്കൾക്കുള്ള തത്സമയ സമ്മർദ്ദ ഡാറ്റയോടുകൂടിയ ഒരു ഹൈ-ലെവൽ കമാൻഡ് സെന്റർ.',
+                policyRecommendationsTitle: 'നയപരമായ ശുപാർശകൾ',
+                initialRecommendation: 'നയപരമായ ശുപാർശകൾ ലഭിക്കുന്നതിന് ഒരു നഗരത്തിൽ ക്ലിക്ക് ചെയ്യുക.',
+                Delhi: 'അടിയന്തിര നടപടി ആവശ്യമാണ്. ജലസംരക്ഷണ നയങ്ങൾ നടപ്പാക്കുകയും തലസ്ഥാനത്തിനായി ബദൽ ജലസ്രോതസ്സുകൾ കണ്ടെത്തുകയും ചെയ്യുക.',
+                Mumbai: 'ഭൂഗർഭജലനിരപ്പ് സ്ഥിരമാണ്. ഭാവിയിലെ സമ്മർദ്ദം തടയുന്നതിന് ദീർഘകാല സുസ്ഥിരതയിലും നിരീക്ഷണത്തിലും ശ്രദ്ധ കേന്ദ്രീകരിക്കുക.',
+                Chennai: 'ഉയർന്ന സമ്മർദ്ദം കണ്ടെത്തി. നഗരവ്യാപക ജല പുനരുപയോഗ പരിപാടികളും മഴവെള്ള സംഭരണ നിർബന്ധങ്ങളും ആരംഭിക്കുക.',
+                Kolkata: 'സൂക്ഷ്മമായി നിരീക്ഷിക്കുക. നിലവിലെ സമ്മർദ്ദം മിതമായതാണ്, പക്ഷേ നഗര വളർച്ച ആവശ്യകത വർദ്ധിപ്പിച്ചേക്കാം.',
+                Bangalore: 'അതീവ സമ്മർദ്ദം. കുഴൽക്കിണർ ഉപയോഗത്തിന് കർശന നിയന്ത്രണങ്ങൾ നടപ്പാക്കുകയും കമ്മ്യൂണിറ്റി അധിഷ്ഠിത ജല മാനേജ്മെന്റ് പ്രോത്സാഹിപ്പിക്കുകയും ചെയ്യുക.',
+                themeToggle: 'തീം മാറ്റുക'
+            }
+        };
+
+        let currentLang = 'en';
+
+        // This is where you store the pre-configured credential.
+        const DUMMY_USER = {
+            email: 'sparrow@gmail.com',
+            password: '25068',
+        };
+
+        function applyTranslations() {
+            const elements = document.querySelectorAll('[data-key]');
+            elements.forEach(el => {
+                const key = el.getAttribute('data-key');
+                if (translations[currentLang][key]) {
+                    el.textContent = translations[currentLang][key];
+                }
+            });
+            const predictBtn = document.querySelector('#prediction-form button');
+            if (predictBtn) {
+                const selectedCityKey = predictionCitySelect.value.toLowerCase();
+                const predictionText = translations[currentLang].getPredictionFor + ' ' + translations[currentLang][selectedCityKey];
+                predictBtn.textContent = predictionText;
+            }
+
+            const appTitleEl = document.querySelector('h1[data-key="appTitle"]');
+            if (appTitleEl) {
+                if (currentLang === 'ml') {
+                    appTitleEl.classList.add('text-title-ml');
+                } else {
+                    appTitleEl.classList.remove('text-title-ml');
+                }
+            }
+
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            if (themeToggleBtn) {
+                if (document.body.classList.contains('light-mode')) {
+                    document.getElementById('moon-icon').classList.add('hidden');
+                    document.getElementById('sun-icon').classList.remove('hidden');
+                } else {
+                    document.getElementById('moon-icon').classList.remove('hidden');
+                    document.getElementById('sun-icon').classList.add('hidden');
+                }
+            }
+
+            const logoutButton = document.getElementById('logout-button');
+            if (logoutButton) { logoutButton.textContent = translations[currentLang].logoutButton; }
+
+            const userDisplay = document.getElementById('user-display');
+            if (userDisplay) { userDisplay.textContent = `Logged in as ${DUMMY_USER.email}`; }
+        }
+
+        function renderChart(data) {
+            chartContainer.innerHTML = '';
+            const margin = {
+                top: 20,
+                right: 30,
+                bottom: 70,
+                left: 60
+            };
+            const width = chartContainer.clientWidth - margin.left - margin.right;
+            const height = chartContainer.clientHeight - margin.top - margin.bottom;
+
+            const svg = d3.select(chartContainer)
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const x = d3.scaleTime()
+                .domain(d3.extent(data, d => new Date(d.Date)))
+                .range([0, width]);
+
+            const y = d3.scaleLinear()
+                .domain([d3.min(data, d => d.Water_Level_m) - 1, d3.max(data, d => d.Water_Level_m) + 1])
+                .range([height, 0]);
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).tickFormat(d3.timeFormat("%b %d")))
+                .selectAll("text")
+                .attr("class", "x-axis-label")
+                .style("fill", "var(--text-color)");
+
+            svg.append("g")
+                .call(d3.axisLeft(y))
+                .selectAll("text")
+                .style("fill", "var(--text-color)");
+
+            const line = d3.line()
+                .x(d => x(new Date(d.Date)))
+                .y(d => y(d.Water_Level_m));
+
+            svg.append("path")
+                .datum(data)
+                .attr("fill", "none")
+                .attr("stroke", "#3B82F6")
+                .attr("stroke-width", 2.5)
+                .attr("d", line);
+        }
+
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = start + progress * (end - start);
+                obj.textContent = value.toFixed(2);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+
+        function checkAuth() {
+            if (localStorage.getItem('isAuthenticated') === 'true') {
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+            } else {
+                document.getElementById('login-container').classList.remove('hidden');
+                document.getElementById('app-container').classList.add('hidden');
+            }
+        }
+
+        // Login logic
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = '';
+
+            if (email === DUMMY_USER.email && password === DUMMY_USER.password) {
+                console.log("Simulated login successful.");
+                localStorage.setItem('isAuthenticated', 'true');
+                checkAuth();
+                location.reload();
+            } else {
+                errorMessage.textContent = "Invalid email or password.";
+            }
+        });
+
+        // Logout logic
+        document.getElementById('logout-button').addEventListener('click', async () => {
+            localStorage.removeItem('isAuthenticated');
+            checkAuth();
+            location.reload();
+        });
+
+        // Additional app logic
+        function updateMapRecommendations() {
+            const selectedCity = predictionCitySelect.value.toLowerCase();
+            const recommendationKey = selectedCity.charAt(0).toUpperCase() + selectedCity.slice(1);
+            if (translations[currentLang][recommendationKey]) {
+                recommendationText.innerText = translations[currentLang][recommendationKey];
+            } else {
+                recommendationText.innerText = translations[currentLang].initialRecommendation;
+            }
+        }
+
+        // --- Start of new Leaflet Map Code ---
+        const cities = [
+            { name: "Chennai", coords: [13.0827, 80.2707] },
+            { name: "Bangalore", coords: [12.9716, 77.5946] },
+            { name: "Delhi", coords: [28.6139, 77.2090] },
+            { name: "Mumbai", coords: [19.0760, 72.8777] },
+            { name: "Ernakulam", coords: [9.9816, 76.2999] }
+        ];
+
+        // Simulated predictions for demonstration
+        const simulatedPredictions = {
+            "Chennai": 80,
+            "Bangalore": 95,
+            "Delhi": 98,
+            "Mumbai": 35,
+            "Ernakulam": 50
+        };
+
+        function getStressColor(prediction) {
+            if (prediction > 80) {
+                return '#FF0000'; // Critical
+            } else if (prediction > 60) {
+                return '#FFA500'; // High
+            } else if (prediction > 40) {
+                return '#FFFF00'; // Moderate
+            } else {
+                return '#00FF00'; // Low
+            }
+        }
+
+        async function initMap() {
+            const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add a legend to the map
+            const legend = L.control({ position: 'bottomright' });
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'legend');
+                const grades = [0, 40, 60, 80];
+                const labels = ['Low', 'Moderate', 'High', 'Critical'];
+                const colors = ['#00FF00', '#FFFF00', '#FFA500', '#FF0000'];
+
+                div.innerHTML += `<h4>Groundwater Stress</h4>`;
+                for (let i = 0; i < grades.length; i++) {
+                    div.innerHTML +=
+                        '<i style="background:' + colors[i] + '"></i> ' +
+                        labels[i] + '<br>';
+                }
+                return div;
+            };
+            legend.addTo(map);
+
+            return map;
+        }
+
+        async function plotCities(map) {
+            for (const c of cities) {
+                const prediction = simulatedPredictions[c.name];
+                const color = getStressColor(prediction);
+                if (prediction !== null) {
+                    const circle = L.circleMarker(c.coords, {
+                        radius: 8 + prediction / 10,
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.8
+                    }).addTo(map).bindPopup(`${c.name}: Prediction = ${prediction.toFixed(2)}%`);
+                    
+                    circle.on('click', () => {
+                        recommendationText.innerText = translations[currentLang][c.name];
+                    });
+                }
+            }
+        }
+
+        // --- End of new Leaflet Map Code ---
+
+        // Event listeners
+        window.onload = async () => {
+            checkAuth();
+            if (isAuthenticated) {
+                applyTranslations();
+                renderChart(historicalData[citySelect.value.toLowerCase()]);
+                const mapInstance = await initMap();
+                await plotCities(mapInstance);
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme) {
+                    document.body.classList.add(savedTheme);
+                } else {
+                    document.body.classList.add('dark-mode');
+                }
+            }
+        };
+        
+        // This function updates the D3 chart and map legend colors
+        function updateThemedElements() {
+             const textColor = getComputedStyle(document.body).getPropertyValue('--text-color').trim();
+             d3.selectAll('.x-axis-label').style('fill', textColor);
+             d3.selectAll('.y-axis-label').style('fill', textColor);
+             d3.selectAll('.legend').style('color', textColor);
+             
+             // Check and re-render D3 chart if needed
+             if (chartContainer.innerHTML) {
+                 renderChart(historicalData[citySelect.value.toLowerCase()]);
+             }
+        }
+
+
+        // Other event listeners
+        languageSelect.addEventListener('change', (e) => {
+            currentLang = e.target.value;
+            applyTranslations();
+            if (isAuthenticated) {
+                renderChart(historicalData[citySelect.value.toLowerCase()]);
+                updateMapRecommendations();
+            }
+        });
+
+        citySelect.addEventListener('change', (e) => {
+            if (isAuthenticated) {
+                renderChart(historicalData[e.target.value.toLowerCase()]);
+            }
+        });
+
+        predictionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (isAuthenticated) {
+                const predictBtn = e.target.querySelector('button');
+                predictBtn.disabled = true;
+                predictBtn.textContent = 'Predicting...';
+                resultDiv.style.opacity = '0';
+                resultDiv.classList.add('hidden');
+
+                const selectedCity = predictionCitySelect.value.toLowerCase();
+                const predictionData = historicalData[selectedCity];
+                const lastValue = predictionData[predictionData.length - 1].Water_Level_m;
+                const simulatedPrediction = (lastValue + (Math.random() * 2 - 1));
+
+                setTimeout(() => {
+                    const startValue = parseFloat(predictedValueSpan.textContent || '0');
+                    animateValue(predictedValueSpan, startValue, simulatedPrediction, 1000);
+
+                    resultDiv.classList.remove('hidden');
+                    predictBtn.textContent = translations[currentLang].getPrediction;
+                    predictBtn.disabled = false;
+                    resultDiv.style.opacity = '1';
+
+                    applyTranslations();
+                }, 1500);
+            }
+        });
+
+        predictionCitySelect.addEventListener('change', () => {
+            applyTranslations();
+        });
+
+        themeToggleBtn.addEventListener('click', () => {
+            if (document.body.classList.contains('light-mode')) {
+                document.body.classList.remove('light-mode');
+                localStorage.setItem('theme', 'dark-mode');
+            } else {
+                document.body.classList.add('light-mode');
+                localStorage.setItem('theme', 'light-mode');
+            }
+            updateThemedElements();
+        });
+    </script>
+</body>
 </html>

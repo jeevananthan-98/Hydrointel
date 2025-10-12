@@ -28,5 +28,8 @@
 "kolkata": "Kolkata",
 "chennai": "Chennai",
 "bangalore": "Bangalore",
-"footerText": "Powered by Advanced Analytics & DWLR Data"
+"footerText": "Powered by Advanced Analytics & DWLR Data",
+"predictionByCityDescription": "Get groundwater prediction and insights for your selected city.",
+"getPredictionFor": "Get prediction for",
+"predictionError": "Prediction error occurred. Please try again."
 }

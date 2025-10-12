@@ -4,7 +4,7 @@ import { animated, useSpring } from '@react-spring/web';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 import './styles/App.css';
-import i18n from './i18n.js';
+import i18n from './i18n/i18n.js';
 import { useTranslation } from 'react-i18next';
 
 // IMPORTANT: This URL must be updated to the public address of your deployed backend server.
